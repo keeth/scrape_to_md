@@ -2,6 +2,31 @@
 
 Simple URL scraper that outputs markdown files.
 
+## Why this exists
+
+I use agentic scraping workflow with Obsidian, where any resource URL that I quick-add to an inbox note is automatically scraped to Markdown for later reading.
+
+Some of the links I scrape are on Twitter or Substack where a logged in session is necessary. This is problematic for Firecrawl or headless browsers, unless I wanted to store my credentials insecurely and have an agent log in with every scrape.
+
+`scrape_to_md` connects to a head-full browser with a persistent Chrome profile. It sits on your desktop like any other browser, and will store your login sessions between invocations.
+
+In addition to regular web scraping, `scrape_to_md` has special handling for PDFs (docling) and YouTube (transcripts).
+
+For security I recommend not saving raw content in your Obsidian vault, if you have an agent like Claude Code running in the vault, due to risk of prompt injection.  I always use an LLM to summarize any downloaded content that is imported to Obsidian.
+
+This is easily done with Simon Willison's awesome [llm](https://llm.datasette.io/en/stable/):
+
+```
+prompt=$(cat <<'EOF'
+detailed prose summary of the following text, 
+calling out any surprising or interesting details. 
+preserve the original markdown frontmatter in your output:
+EOF
+)
+
+llm -m claude-sonnet-4.5 "$prompt" < $1 > $2
+```
+
 ## Features
 
 - **YouTube**: Extracts transcripts and metadata
@@ -94,38 +119,6 @@ daemon:
 - Logs: `~/.local/share/scrape_to_md/logs`
 - PID files: `~/.local/share/scrape_to_md/pids`
 - Unix socket: `~/.local/share/scrape_to_md/chrome_scraper.sock`
-
-## How it works
-
-1. **URL detection**: Automatically detects YouTube, PDF, or general web pages
-2. **YouTube**: Uses `yt-dlp` and `youtube-transcript-api` for transcripts
-3. **PDF**: Uses `docling` to convert PDF to markdown
-4. **Web**: Automatically uses daemon mode for better performance
-   - First scrape launches daemon in background
-   - Subsequent scrapes reuse the daemon's persistent Chrome instance
-   - Falls back to direct Playwright scraping if daemon fails
-
-### Daemon Architecture
-
-Web scraping uses a client-server architecture over Unix sockets:
-
-- **Auto-start**: First web scrape automatically launches daemon in background
-- **Server**: Chrome runs with remote debugging enabled (CDP on port 9222)
-- **Communication**: Unix socket at `~/.local/share/scrape_to_md/chrome_scraper.sock`
-- **Protocol**: aiohttp web service with `/scrape` and `/health` endpoints
-- **Browser**: Persistent Chrome instance with custom profile directory
-- **Lifecycle**: Daemon persists across scrapes; manually stop with `scrape_to_md serve --stop`
-- **Fallback**: Automatically falls back to direct Playwright if daemon unavailable
-
-The daemon is only used for web scraping. YouTube and PDF scraping always use direct methods.
-
-### Why trafilatura instead of Firecrawl?
-
-- No API key required
-- Works offline
-- Similar content extraction quality
-- Open source and actively maintained
-- Specifically designed for extracting main article content from HTML
 
 ## Output Format
 
