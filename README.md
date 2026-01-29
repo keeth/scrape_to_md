@@ -1,4 +1,4 @@
-# scrape-to-md
+# scrape_to_md
 
 Simple URL scraper that outputs markdown files.
 
