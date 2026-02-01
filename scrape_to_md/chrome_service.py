@@ -82,6 +82,36 @@ class ChromeService:
 
     async def start(self):
         """Connect to existing Chrome instance, launching one if needed."""
+        await self._ensure_chrome_running()
+
+        self.playwright = await async_playwright().start()
+
+        # Try to connect to Chrome via CDP with retry logic
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                self.browser = await self.playwright.chromium.connect_over_cdp(self.cdp_url)
+                logger.info(f"Connected to browser at {self.cdp_url}")
+                break
+            except Exception as e:
+                logger.warning(f"Failed to connect to Chrome (attempt {attempt + 1}/{max_retries}): {e}")
+
+                if "ECONNREFUSED" in str(e) or "connect" in str(e).lower():
+                    # Chrome crashed or was killed, restart it
+                    logger.info("Chrome connection refused, restarting Chrome...")
+                    await self.cleanup_chrome()
+                    await self._ensure_chrome_running()
+
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(2)  # Wait before retry
+                    else:
+                        raise RuntimeError(f"Failed to connect to Chrome after {max_retries} attempts: {e}")
+                else:
+                    # Different error, don't retry
+                    raise
+
+    async def _ensure_chrome_running(self):
+        """Ensure Chrome process is running and ready."""
         if not is_chrome_running(self.config.cdp_port):
             logger.info("Chrome not running, launching...")
 
@@ -108,16 +138,19 @@ class ChromeService:
             else:
                 raise RuntimeError("Chrome failed to start within 30 seconds")
 
-        self.playwright = await async_playwright().start()
-        self.browser = await self.playwright.chromium.connect_over_cdp(self.cdp_url)
-        logger.info(f"Connected to browser at {self.cdp_url}")
-
     async def stop(self):
         """Stop scraper and cleanup."""
         if self.browser:
-            await self.browser.close()
+            try:
+                await self.browser.close()
+            except Exception as e:
+                logger.warning(f"Error closing browser: {e}")
+
         if self.playwright:
-            await self.playwright.stop()
+            try:
+                await self.playwright.stop()
+            except Exception as e:
+                logger.warning(f"Error stopping playwright: {e}")
 
         # Kill Chrome browser if we started it
         await self.cleanup_chrome()
@@ -138,11 +171,16 @@ class ChromeService:
         """Ensure we have a valid browser connection with at least one context."""
         needs_reconnect = False
 
-        # Check if browser is still connected
-        if not self.browser or not self.browser.is_connected():
-            needs_reconnect = True
-        # Check if there are any contexts (windows)
-        elif not self.browser.contexts:
+        try:
+            # Check if browser is still connected
+            if not self.browser or not self.browser.is_connected():
+                needs_reconnect = True
+            # Check if there are any contexts (windows)
+            elif not self.browser.contexts:
+                needs_reconnect = True
+        except Exception as e:
+            # Browser connection is broken
+            logger.warning(f"Error checking browser connection: {e}")
             needs_reconnect = True
 
         if needs_reconnect:

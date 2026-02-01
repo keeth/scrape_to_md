@@ -106,6 +106,7 @@ scrape_to_md serve --stop       # Stop daemon
 - Runs in background (no terminal needed after first scrape)
 - Faster scraping (no Chrome startup overhead per request)
 - Reuses browser session (authentication persists across scrapes)
+- Auto-recovery: Automatically restarts Chrome if it crashes or connection fails
 - Gracefully falls back to direct scraping if daemon fails
 
 ## Configuration
