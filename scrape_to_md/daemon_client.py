@@ -1,7 +1,6 @@
 """Client for communicating with the Chrome daemon service."""
 
 import socket
-from pathlib import Path
 
 import aiohttp
 
@@ -29,15 +28,14 @@ def is_daemon_running(socket_path: Path) -> bool:
         return False
 
 
-async def scrape_via_daemon(url: str, output_dir: Path) -> Path:
+async def scrape_via_daemon(url: str) -> str:
     """Scrape URL using daemon service.
 
     Args:
         url: URL to scrape
-        output_dir: Directory to save output
 
     Returns:
-        Path to output markdown file
+        Markdown content with frontmatter
 
     Raises:
         RuntimeError: If daemon request fails
@@ -74,7 +72,7 @@ async def scrape_via_daemon(url: str, output_dir: Path) -> Path:
     markdown = result.get("markdown", "")
 
     # Create frontmatter
-    frontmatter = f"""---
+    content = f"""---
 url: {url}
 title: {title}
 source: web
@@ -83,29 +81,4 @@ source: web
 {markdown}
 """
 
-    # Ensure output directory exists
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Generate filename from title
-    if title:
-        # Take first 50 chars and sanitize
-        filename = title[:50]
-        # Replace filesystem-unfriendly characters (including spaces) with underscore
-        filename = "".join(c if c.isalnum() else "_" for c in filename)
-        # Remove leading/trailing underscores and collapse multiple underscores
-        filename = "_".join(filter(None, filename.split("_")))
-        filename = filename or "untitled"
-    else:
-        filename = "untitled"
-
-    # Ensure unique filename
-    output_file = output_dir / f"{filename}.md"
-    counter = 1
-    while output_file.exists():
-        output_file = output_dir / f"{filename}_{counter}.md"
-        counter += 1
-
-    # Write markdown file
-    output_file.write_text(frontmatter, encoding="utf-8")
-
-    return output_file
+    return content

@@ -13,7 +13,6 @@ import yaml
 class Config:
     """Application configuration."""
 
-    output_dir: Path
     logs_dir: Path
     pids_dir: Path
     chrome_profile: Path
@@ -86,7 +85,6 @@ def get_config() -> Config:
 
     # Default configuration
     config_data = {
-        "output_dir": str(home / "Documents" / "scraped"),
         "logs_dir": str(data_dir / "logs"),
         "pids_dir": str(data_dir / "pids"),
         "chrome_profile": str(data_dir / "chrome_profile"),
@@ -100,10 +98,6 @@ def get_config() -> Config:
             with open(config_file, "r") as f:
                 user_config = yaml.safe_load(f) or {}
 
-            # Update with user config (top-level keys)
-            if "output_dir" in user_config:
-                config_data["output_dir"] = user_config["output_dir"]
-
             # Handle daemon-specific config
             if "daemon" in user_config and isinstance(user_config["daemon"], dict):
                 daemon_config = user_config["daemon"]
@@ -115,7 +109,6 @@ def get_config() -> Config:
 
     # Convert string paths to Path objects and expand ~
     _config_instance = Config(
-        output_dir=Path(config_data["output_dir"]).expanduser(),
         logs_dir=Path(config_data["logs_dir"]).expanduser(),
         pids_dir=Path(config_data["pids_dir"]).expanduser(),
         chrome_profile=Path(config_data["chrome_profile"]).expanduser(),

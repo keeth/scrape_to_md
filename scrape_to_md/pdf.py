@@ -6,15 +6,14 @@ from urllib.request import urlretrieve
 from docling.document_converter import DocumentConverter
 
 
-def scrape_pdf(url: str, output_dir: Path) -> Path:
+def scrape_pdf(url: str) -> str:
     """Scrape PDF and convert to markdown.
 
     Args:
         url: PDF URL
-        output_dir: Directory to save output
 
     Returns:
-        Path to output markdown file
+        Markdown content with frontmatter
 
     Raises:
         RuntimeError: If scraping fails
@@ -48,22 +47,4 @@ source: PDF
 {markdown_content}
 """
 
-    # Save to file
-    # Get base filename from URL
-    base_filename = url.split('/')[-1].replace('.pdf', '').replace('.PDF', '')
-    # Sanitize filename: replace filesystem-unfriendly characters (including spaces) with underscore
-    safe_filename = "".join(c if c.isalnum() else "_" for c in base_filename[:50])
-    # Remove leading/trailing underscores and collapse multiple underscores
-    safe_filename = "_".join(filter(None, safe_filename.split("_")))
-    filename = f"{safe_filename or 'document'}.md"
-
-    # Ensure unique filename
-    output_file = output_dir / filename
-    counter = 1
-    while output_file.exists():
-        output_file = output_dir / f"{safe_filename or 'document'}_{counter}.md"
-        counter += 1
-
-    output_file.write_text(content)
-
-    return output_file
+    return content

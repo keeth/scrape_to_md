@@ -47,6 +47,8 @@ coverage.xml
 *.cover
 *.py,cover
 .hypothesis/
+*.pyc
+*.pyo
 
 # Type checking
 .mypy_cache/
@@ -78,7 +80,5 @@ Thumbs.db
 # Claude Code
 .claude/
 
-# Project-specific runtime directories
+# Project-specific
 *.md.tmp
-/scraped/
-/output/

@@ -46,7 +46,24 @@ uv tool install .
 
 # Or for development
 uv pip install -e .
+uv sync --group dev  # Install dev dependencies (pytest, ruff)
 playwright install chromium
+```
+
+## Development
+
+```bash
+# Run tests
+pytest
+
+# Run tests with coverage
+pytest --cov=scrape_to_md --cov-report=html
+
+# Run linter
+ruff check .
+
+# Format code
+ruff format .
 ```
 
 ## Usage
@@ -57,17 +74,17 @@ playwright install chromium
 # Optional: Create default config file
 scrape_to_md init
 
-# Scrape a web page
+# Scrape to stdout
 scrape_to_md https://example.com/article
 
+# Save to file
+scrape_to_md https://example.com/article > article.md
+
 # Scrape a YouTube video
-scrape_to_md https://youtube.com/watch?v=abc123
+scrape_to_md https://youtube.com/watch?v=abc123 > video.md
 
 # Scrape a PDF
-scrape_to_md https://example.com/document.pdf
-
-# Specify output directory
-scrape_to_md https://example.com/page -o ~/my-docs
+scrape_to_md https://example.com/document.pdf > document.md
 ```
 
 ### Daemon Mode (Automatic)
@@ -102,10 +119,7 @@ scrape_to_md init
 This creates `~/.config/scrape_to_md/config.yml` with:
 
 ```yaml
-# Default output directory
-output_dir: ~/Documents/scraped
-
-# Optional daemon configuration
+# Daemon configuration
 daemon:
   cdp_port: 9222  # Chrome DevTools Protocol port
   chrome_profile: ~/.local/share/scrape_to_md/chrome_profile
@@ -114,7 +128,6 @@ daemon:
 ```
 
 **Default paths** (used if not specified):
-- Output: `~/Documents/scraped`
 - Chrome profile: `~/.local/share/scrape_to_md/chrome_profile`
 - Logs: `~/.local/share/scrape_to_md/logs`
 - PID files: `~/.local/share/scrape_to_md/pids`

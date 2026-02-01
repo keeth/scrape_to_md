@@ -17,45 +17,18 @@ from scrape_to_md.web import scrape_web
 from scrape_to_md.youtube import scrape_youtube
 
 
-def get_output_dir() -> Path:
-    """Get output directory from config or use default.
-
-    Returns:
-        Path to output directory
-    """
-    # Check for config file
-    config_file = Path.home() / ".config" / "scrape_to_md" / "config.yml"
-    if config_file.exists():
-        import yaml
-        try:
-            config = yaml.safe_load(config_file.read_text())
-            if 'output_dir' in config:
-                return Path(config['output_dir']).expanduser()
-        except Exception:
-            pass
-
-    # Default output directory
-    return Path.home() / "Documents" / "scraped"
-
-
-async def scrape_url(url: str, output_dir: Path | None = None) -> Path:
-    """Scrape a URL and save to markdown.
+async def scrape_url(url: str) -> str:
+    """Scrape a URL and return markdown content.
 
     Args:
         url: URL to scrape
-        output_dir: Optional output directory (uses default if not provided)
 
     Returns:
-        Path to output file
+        Markdown content with frontmatter
 
     Raises:
         RuntimeError: If scraping fails
     """
-    if output_dir is None:
-        output_dir = get_output_dir()
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-
     # Detect URL type
     url_type = detect_url_type(url)
 
@@ -77,7 +50,7 @@ async def scrape_url(url: str, output_dir: Path | None = None) -> Path:
         # Try to use daemon if available
         if is_daemon_running(config.socket_path):
             try:
-                return await scrape_via_daemon(url, output_dir)
+                return await scrape_via_daemon(url)
             except RuntimeError as e:
                 print(
                     f"Warning: Daemon failed ({e}), falling back to direct scraping",
@@ -85,16 +58,16 @@ async def scrape_url(url: str, output_dir: Path | None = None) -> Path:
                 )
 
         # Fall back to direct scraping
-        return await scrape_web(url, output_dir)
+        return await scrape_web(url)
 
     # Direct scraping for YouTube and PDF
     if url_type == "youtube":
-        return scrape_youtube(url, output_dir)
+        return scrape_youtube(url)
     elif url_type == "pdf":
-        return scrape_pdf(url, output_dir)
+        return scrape_pdf(url)
     else:
         # Shouldn't reach here, but handle gracefully
-        return await scrape_web(url, output_dir)
+        return await scrape_web(url)
 
 
 def start_daemon_background():
@@ -190,10 +163,7 @@ def handle_init():
     # Default configuration
     default_config = """# scrape_to_md configuration
 
-# Default output directory for scraped content
-output_dir: ~/Documents/scraped
-
-# Optional daemon configuration (defaults shown)
+# Daemon configuration (defaults shown)
 daemon:
   # Chrome DevTools Protocol port
   cdp_port: 9222
@@ -245,14 +215,14 @@ def main():
 
     # Default: scrape command (backward compatible)
     parser = argparse.ArgumentParser(
-        description="Scrape URLs to markdown files",
+        description="Scrape URLs to markdown (outputs to stdout)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   scrape_to_md https://example.com/article
+  scrape_to_md https://example.com/article > output.md
   scrape_to_md https://youtube.com/watch?v=abc123
   scrape_to_md https://example.com/document.pdf
-  scrape_to_md https://example.com/page -o ~/my-docs
 
 Setup:
   scrape_to_md init               # Create default config file
@@ -270,18 +240,12 @@ Config file: ~/.config/scrape_to_md/config.yml
         """,
     )
     parser.add_argument("url", help="URL to scrape")
-    parser.add_argument(
-        "-o",
-        "--output",
-        type=Path,
-        help="Output directory (default: ~/Documents/scraped or from config)",
-    )
 
     args = parser.parse_args()
 
     try:
-        output_file = asyncio.run(scrape_url(args.url, args.output))
-        print(output_file)
+        markdown = asyncio.run(scrape_url(args.url))
+        print(markdown)
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

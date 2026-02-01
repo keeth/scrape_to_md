@@ -1,20 +1,16 @@
 """Web scraper using Playwright + trafilatura."""
-import asyncio
-from pathlib import Path
-
 import trafilatura
 from playwright.async_api import async_playwright
 
 
-async def scrape_web(url: str, output_dir: Path) -> Path:
+async def scrape_web(url: str) -> str:
     """Scrape web page using Chrome and extract main content with trafilatura.
 
     Args:
         url: Web page URL
-        output_dir: Directory to save output
 
     Returns:
-        Path to output markdown file
+        Markdown content with frontmatter
 
     Raises:
         RuntimeError: If scraping fails
@@ -73,20 +69,4 @@ source: web
 {extracted}
 """
 
-    # Save to file
-    # Sanitize filename: replace filesystem-unfriendly characters (including spaces) with underscore
-    safe_title = "".join(c if c.isalnum() else "_" for c in title[:50])
-    # Remove leading/trailing underscores and collapse multiple underscores
-    safe_title = "_".join(filter(None, safe_title.split("_")))
-    filename = f"{safe_title or 'untitled'}.md"
-
-    # Ensure unique filename
-    output_file = output_dir / filename
-    counter = 1
-    while output_file.exists():
-        output_file = output_dir / f"{safe_title or 'untitled'}_{counter}.md"
-        counter += 1
-
-    output_file.write_text(content)
-
-    return output_file
+    return content

@@ -1,6 +1,5 @@
 """YouTube scraper using yt-dlp and transcript API."""
 import subprocess
-from pathlib import Path
 
 from youtube_transcript_api import YouTubeTranscriptApi
 
@@ -28,15 +27,14 @@ def extract_video_id(url: str) -> str:
     raise ValueError(f"Could not extract video ID from URL: {url}")
 
 
-def scrape_youtube(url: str, output_dir: Path) -> Path:
+def scrape_youtube(url: str) -> str:
     """Scrape YouTube video transcript and metadata.
 
     Args:
         url: YouTube URL
-        output_dir: Directory to save output
 
     Returns:
-        Path to output markdown file
+        Markdown content with frontmatter
 
     Raises:
         RuntimeError: If scraping fails
@@ -108,20 +106,4 @@ upload_date: {upload_date}
 {transcript_text if transcript_text else '*Transcript not available*'}
 """
 
-    # Save to file
-    # Sanitize filename: replace filesystem-unfriendly characters (including spaces) with underscore
-    safe_title = "".join(c if c.isalnum() else "_" for c in title[:50])
-    # Remove leading/trailing underscores and collapse multiple underscores
-    safe_title = "_".join(filter(None, safe_title.split("_")))
-    filename = f"{safe_title or video_id}.md"
-
-    # Ensure unique filename
-    output_file = output_dir / filename
-    counter = 1
-    while output_file.exists():
-        output_file = output_dir / f"{safe_title or video_id}_{counter}.md"
-        counter += 1
-
-    output_file.write_text(content)
-
-    return output_file
+    return content
