@@ -1,4 +1,5 @@
 """Web scraper using Playwright + trafilatura."""
+import yaml
 import trafilatura
 from playwright.async_api import async_playwright
 
@@ -57,12 +58,17 @@ async def scrape_web(url: str) -> str:
     if not extracted:
         raise RuntimeError("No content could be extracted from the page")
 
-    # Create markdown with frontmatter
+    # Create markdown with properly escaped YAML frontmatter
+    frontmatter = {
+        'url': url,
+        'title': title,
+        'source': 'web',
+    }
+
+    yaml_frontmatter = yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
     content = f"""---
-url: {url}
-title: {title}
-source: web
----
+{yaml_frontmatter}---
 
 # {title}
 

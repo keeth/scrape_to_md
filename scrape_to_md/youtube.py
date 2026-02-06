@@ -1,6 +1,8 @@
 """YouTube scraper using yt-dlp and transcript API."""
+import json
 import subprocess
 
+import yaml
 from youtube_transcript_api import YouTubeTranscriptApi
 
 
@@ -44,54 +46,63 @@ def scrape_youtube(url: str) -> str:
     except ValueError as e:
         raise RuntimeError(str(e))
 
-    # Try to get transcript
+    # Try to get transcript using the new API
     transcript_text = None
     try:
-        transcript = YouTubeTranscriptApi.get_transcript(video_id)
-        transcript_text = '\n'.join([entry['text'] for entry in transcript])
+        api = YouTubeTranscriptApi()
+        transcript = api.fetch(video_id, languages=('en',))
+        # Extract text from snippets
+        if hasattr(transcript, 'snippets') and transcript.snippets:
+            transcript_text = '\n'.join([snippet.text for snippet in transcript.snippets])
     except Exception:
-        # If transcript fails, try yt-dlp subtitles
-        try:
-            result = subprocess.run(
-                ['yt-dlp', '--skip-download', '--write-auto-sub', '--sub-format', 'vtt',
-                 '--output', '/tmp/%(id)s.%(ext)s', url],
-                capture_output=True,
-                text=True,
-                check=False
-            )
-            # yt-dlp subtitle extraction is complex, skip for now
-        except Exception:
-            pass
+        # If transcript fails, we'll just leave it as None
+        pass
 
-    # Get video metadata
+    # Get video metadata using JSON output (more reliable than individual flags)
     try:
         result = subprocess.run(
-            ['yt-dlp', '--get-title', '--get-description', '--get-duration',
-             '--get-upload-date', url],
+            ['yt-dlp', '-j', '--skip-download', url],
             capture_output=True,
             text=True,
             check=True
         )
-        lines = result.stdout.strip().split('\n')
-        title = lines[0] if len(lines) > 0 else 'Unknown'
-        description = lines[1] if len(lines) > 1 else ''
-        duration = lines[2] if len(lines) > 2 else ''
-        upload_date = lines[3] if len(lines) > 3 else ''
-    except Exception:
+        metadata = json.loads(result.stdout)
+        title = metadata.get('title', video_id)
+        description = metadata.get('description', '')
+        # Format duration as "MM:SS" or "HH:MM:SS"
+        duration_sec = metadata.get('duration', 0)
+        if duration_sec:
+            hours = int(duration_sec // 3600)
+            minutes = int((duration_sec % 3600) // 60)
+            seconds = int(duration_sec % 60)
+            if hours > 0:
+                duration = f"{hours}:{minutes:02d}:{seconds:02d}"
+            else:
+                duration = f"{minutes}:{seconds:02d}"
+        else:
+            duration = ''
+        upload_date = metadata.get('upload_date', '')
+    except Exception as e:
+        # If yt-dlp fails, use fallback values
         title = video_id
         description = ''
         duration = ''
         upload_date = ''
 
-    # Create markdown content
+    # Create markdown content with properly escaped YAML frontmatter
+    frontmatter = {
+        'url': url,
+        'title': title,
+        'source': 'YouTube',
+        'video_id': video_id,
+        'duration': duration,
+        'upload_date': upload_date,
+    }
+
+    yaml_frontmatter = yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
     content = f"""---
-url: {url}
-title: {title}
-source: YouTube
-video_id: {video_id}
-duration: {duration}
-upload_date: {upload_date}
----
+{yaml_frontmatter}---
 
 # {title}
 

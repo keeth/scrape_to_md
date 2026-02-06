@@ -3,6 +3,7 @@ import tempfile
 from pathlib import Path
 from urllib.request import urlretrieve
 
+import yaml
 from docling.document_converter import DocumentConverter
 
 
@@ -38,11 +39,16 @@ def scrape_pdf(url: str) -> str:
     finally:
         tmp_path.unlink(missing_ok=True)
 
-    # Add frontmatter
+    # Add properly escaped YAML frontmatter
+    frontmatter = {
+        'url': url,
+        'source': 'PDF',
+    }
+
+    yaml_frontmatter = yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
     content = f"""---
-url: {url}
-source: PDF
----
+{yaml_frontmatter}---
 
 {markdown_content}
 """

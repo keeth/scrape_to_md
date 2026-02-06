@@ -1,8 +1,10 @@
 """Client for communicating with the Chrome daemon service."""
 
 import socket
+from pathlib import Path
 
 import aiohttp
+import yaml
 
 
 def is_daemon_running(socket_path: Path) -> bool:
@@ -67,16 +69,21 @@ async def scrape_via_daemon(url: str) -> str:
     if result.get("error"):
         raise RuntimeError(f"Daemon scraping failed: {result['error']}")
 
-    # Create markdown with frontmatter (same format as web.py)
+    # Create markdown with properly escaped YAML frontmatter (same format as web.py)
     title = result.get("title", "")
     markdown = result.get("markdown", "")
 
-    # Create frontmatter
+    # Create properly escaped YAML frontmatter
+    frontmatter = {
+        'url': url,
+        'title': title,
+        'source': 'web',
+    }
+
+    yaml_frontmatter = yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
     content = f"""---
-url: {url}
-title: {title}
-source: web
----
+{yaml_frontmatter}---
 
 {markdown}
 """
