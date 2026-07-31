@@ -74,7 +74,11 @@ class ChromeService:
     def __init__(self):
         """Initialize scraper service."""
         self.config = get_config()
-        self.cdp_url = f"http://localhost:{self.config.cdp_port}"
+        # Use 127.0.0.1 (not "localhost"): Chrome's --remote-debugging-port binds
+        # IPv4 only, but "localhost" can resolve to IPv6 ::1, giving intermittent
+        # ECONNREFUSED that triggers spurious Chrome restarts + headless fallback.
+        # Matches the IPv4 check in is_chrome_running().
+        self.cdp_url = f"http://127.0.0.1:{self.config.cdp_port}"
         self.playwright = None
         self.browser = None
         self.chrome_process = None
